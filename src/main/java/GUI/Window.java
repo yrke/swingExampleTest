@@ -4,8 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.Collections;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -27,18 +26,7 @@ public class Window extends JFrame {
         setAction(new AbstractAction("Delete selection") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Object[] listArr = listModel.toArray();
-                Object[] listSelection = list.getSelectedValuesList().toArray();
-
-                int j = 0;
-
-                // Loop while there is elements in array to iterate over or until reached end of selection
-                for (int i = 0; i < listArr.length || j == listSelection.length - 1; ++i) {
-                    if (listArr[i] == listSelection[j]) {
-                        listModel.remove(i);
-                        ++j;
-                    }
-                }
+                DeleteSelection(list, listModel);
             }
         });
     }};
@@ -47,25 +35,7 @@ public class Window extends JFrame {
         setAction(new AbstractAction("Sort Ascending") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Save as string list
-                List<String> listCollection = Collections.list(listModel.elements());
-                
-
-                // Convert to list of integers to sort numerically instead of alphabetically
-                List<Integer> listInt = new ArrayList<>();
-
-                for (String listEntry : listCollection) {
-                    listInt.add(Integer.parseInt(listEntry));
-                }
-
-                Collections.sort(listInt);
-
-                // Update data
-                listModel.clear();
-
-                for (int listIntEntry : listInt) {
-                    listModel.addElement(Integer.toString(listIntEntry));
-                }
+                SortAscending(listModel);
             }
         });
     }};
@@ -74,48 +44,7 @@ public class Window extends JFrame {
         setAction(new AbstractAction("Show min, max and average value") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JFrame popup = new JFrame("Popup");
-                popup.setSize(300, 300);
-
-                // Make int array from list
-                int[] listArr = new int[listModel.size()];
-
-                for (int i = 0; i < listModel.size(); ++i) {
-                    listArr[i] = Integer.parseInt(listModel.getElementAt(i));
-                }
-
-                // Set min to max and max to min value to ensure a number from the list is assigned
-                int min = Integer.MAX_VALUE;
-                int max = Integer.MIN_VALUE;
-
-                int sum = 0;
-
-                // Get min, max and sum
-                for (int i = 0; i < listArr.length; ++i) {
-                    if (listArr[i] <= min) {
-                        min = listArr[i];
-                    }
-                    
-                    if (listArr[i] >= max) {
-                        max = listArr[i];
-                    }
-
-                    sum += listArr[i];
-                }
-
-                int avg = sum / listArr.length;
-
-                JLabel minLabel = new JLabel("Min: " + min);
-                JLabel maxLabel = new JLabel("Max: " + max);
-                JLabel avgLabel = new JLabel("Avg: " + avg);
-
-                popup.setLayout(new FlowLayout());
-
-                popup.add(minLabel);
-                popup.add(maxLabel);
-                popup.add(avgLabel);
-
-                popup.setVisible(true);
+                ShowDialogPopup(listModel);
             }
         });
     }};
@@ -163,6 +92,121 @@ public class Window extends JFrame {
 
         // Close program when main frame is closed
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    /**
+     * Deletes a selection from the list assuming sequential order.
+     * 
+     * @param {JList<String>} list The JList. 
+     * @param {DefaultListModel<String>} listModel The model of the list.
+     * 
+     * @returns {void} Nothing.
+     */
+    private void DeleteSelection(JList<String> list, DefaultListModel<String> listModel) {
+        List<String> listSelection = list.getSelectedValuesList(); // Get selected list (it is always in sequential order)
+
+        int selectionSize = listSelection.size();
+
+        if (selectionSize == 0) return; // Early exit if list is empty
+
+        int i = 0;
+        int j = 0;
+
+        // While we did not delete entire selection
+        while (j < selectionSize) {
+            // If current index on model is equal to current index of selection
+            if (listModel.getElementAt(i) == listSelection.get(j)) {
+                // Remove it from the list and look for next selected value 
+                listModel.remove(i); // (I is not incremented since a element is deleted)
+                ++j;
+            }
+            else {
+                // Increment to next index
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * Sorts the list in ascending order.
+     * 
+     * @param {DefaultListModel<String>} listModel The model of the list.
+     * 
+     * @returns {void} Nothing.
+     */
+    private void SortAscending(DefaultListModel<String> listModel) {
+        // Save as string list
+        List<String> listCollection = Collections.list(listModel.elements());
+        
+        Comparator<String> numericallyCompare = new Comparator<String>() {
+            @Override
+            public int compare(String strA, String strB) {
+                int intA = Integer.parseInt(strA);
+                int intB = Integer.parseInt(strB);
+
+                return Integer.compare(intA, intB);
+            }
+        };
+
+        Collections.sort(listCollection, numericallyCompare);
+        
+        listModel.clear();
+        
+        for (int i = 0; i < listCollection.size(); ++i) {
+            listModel.add(i, listCollection.get(i));
+        }
+    }
+
+    /**
+     * Shows popup window displaying min value, max value, and avg value of list.
+     * 
+     * @param {DefaultListModel<String>} listModel The model of the list.
+     * 
+     * @returns {void} Nothing.
+     */
+    private void ShowDialogPopup(DefaultListModel<String> listModel) {
+        JFrame popup = new JFrame("Popup");
+        popup.setSize(300, 300);
+
+        // Make int array from string list
+        int[] listArr = new int[listModel.size()];
+
+        for (int i = 0; i < listModel.size(); ++i) {
+            listArr[i] = Integer.parseInt(listModel.getElementAt(i));
+        }
+
+        // Set min to max and max to min value to ensure a number from the list is assigned
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+
+        int sum = 0;
+
+        // Get min, max and sum
+        for (int i = 0; i < listArr.length; ++i) {
+            if (listArr[i] <= min) {
+                min = listArr[i];
+            }
+            
+            if (listArr[i] >= max) {
+                max = listArr[i];
+            }
+
+            sum += listArr[i];
+        }
+
+        int avg = sum / listArr.length;
+
+        JLabel minLabel = new JLabel("Min: " + min);
+        JLabel maxLabel = new JLabel("Max: " + max);
+        JLabel avgLabel = new JLabel("Avg: " + avg);
+
+        popup.setLayout(new FlowLayout());
+
+        popup.add(minLabel);
+        popup.add(maxLabel);
+        popup.add(avgLabel);
+
+        popup.setVisible(true);
     }
 
     /**
